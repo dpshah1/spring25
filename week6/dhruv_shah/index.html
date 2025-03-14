@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Modern Chat App</title>
+    <style>
+      body { 
+        margin: 0; 
+        padding-bottom: 3rem; 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f5f5f5;
+        height: 100vh;
+      }
+
+      #chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        height: calc(100vh - 100px);
+        display: flex;
+        flex-direction: column;
+      }
+
+      #form { 
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        height: 4.5rem;
+        box-sizing: border-box;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.05);
+        max-width: 800px;
+        margin: 0 auto;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      #input { 
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.8rem 1.5rem;
+        flex-grow: 1;
+        border-radius: 1.5rem;
+        margin: 0.25rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        min-height: 24px;
+        max-height: 120px;
+        resize: none;
+      }
+
+      #input:focus { 
+        outline: none;
+        border-color: #2196f3;
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+        background: white;
+      }
+
+      #input::placeholder {
+        color: #999;
+        transition: color 0.2s ease;
+      }
+
+      #input:focus::placeholder {
+        color: #bbb;
+      }
+
+      #form > button { 
+        background: #2196f3;
+        border: none;
+        padding: 0.8rem 1.8rem;
+        margin: 0.25rem;
+        border-radius: 1.5rem;
+        outline: none;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(33, 150, 243, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 100px;
+      }
+
+      #form > button:hover {
+        background: #1976d2;
+        box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+        transform: translateY(-1px);
+      }
+
+      #form > button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 5px rgba(33, 150, 243, 0.2);
+      }
+
+      #messages { 
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .message-container {
+        padding: 0.5rem;
+        margin: 0.5rem;
+        max-width: 70%;
+        width: fit-content;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .message {
+        padding: 0.8rem 1.2rem;
+        border-radius: 1rem;
+        word-wrap: break-word;
+        position: relative;
+      }
+
+      .sent-message { 
+        margin-left: auto;
+      }
+
+      .sent-message .message {
+        background: #2196f3;
+        color: white;
+        border-bottom-right-radius: 0.2rem;
+      }
+
+      .received-message { 
+        margin-right: auto;
+      }
+
+      .received-message .message {
+        background: #fff;
+        color: #333;
+        border-bottom-left-radius: 0.2rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+
+      .timestamp {
+        font-size: 0.7rem;
+        color: #666;
+        margin-top: 0.2rem;
+      }
+
+      .sent-message .timestamp {
+        text-align: right;
+      }
+
+      .message-actions {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: -20px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      }
+
+      .message-container:hover .message-actions {
+        display: flex;
+      }
+
+      .action-button {
+        border: none;
+        background: none;
+        padding: 2px 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #666;
+      }
+
+      .action-button:hover {
+        color: #2196f3;
+      }
+
+      .reactions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-top: 0.3rem;
+      }
+
+      .reaction {
+        background: rgba(0,0,0,0.1);
+        padding: 2px 5px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .reaction:hover {
+        background: rgba(0,0,0,0.2);
+        transform: scale(1.05);
+      }
+
+      .edited-label {
+        font-size: 0.7rem;
+        font-style: italic;
+        margin-left: 0.5rem;
+        opacity: 0.7;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Scrollbar styling */
+      #messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      #messages::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+      }
+
+      #messages::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat-container">
+      <ul id="messages"></ul>
+    </div>
+    <form id="form" action="">
+      <textarea id="input" placeholder="Type a message..." rows="1" autocomplete="off"></textarea>
+      <button type="submit">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+    var socket = io();
+    var messages = document.getElementById('messages');
+    var form = document.getElementById('form');
+    var input = document.getElementById('input');
+    
+    // Auto-resize textarea as user types
+    input.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    // Reset textarea height when message is sent
+    function resetTextarea() {
+        input.value = '';
+        input.style.height = 'auto';
+    }
+    
+    // Single emoji for reactions
+    const REACTION_EMOJI = '❤️';
+
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function createMessageElement(msgData) {
+        const container = document.createElement('div');
+        container.className = `message-container ${msgData.senderId === socket.id ? 'sent-message' : 'received-message'}`;
+        container.setAttribute('data-message-id', msgData.id);
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'message-text';
+        textSpan.textContent = msgData.text;
+        
+        if (msgData.edited) {
+            const editedLabel = document.createElement('span');
+            editedLabel.className = 'edited-label';
+            editedLabel.textContent = '(edited)';
+            textSpan.appendChild(editedLabel);
+        }
+
+        messageDiv.appendChild(textSpan);
+
+        // Add message actions
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        
+        if (msgData.senderId === socket.id) {
+            // Add edit and delete buttons for own messages
+            const editBtn = document.createElement('button');
+            editBtn.className = 'action-button';
+            editBtn.innerHTML = '✏️';
+            editBtn.onclick = () => editMessage(msgData.id, textSpan);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-button';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.onclick = () => deleteMessage(msgData.id);
+            
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+        } else {
+            // Add heart reaction button only for other people's messages
+            const reactBtn = document.createElement('button');
+            reactBtn.className = 'action-button';
+            reactBtn.innerHTML = REACTION_EMOJI;
+            reactBtn.onclick = () => toggleReaction(msgData.id, REACTION_EMOJI);
+            actions.appendChild(reactBtn);
+        }
+        
+        messageDiv.appendChild(actions);
+        container.appendChild(messageDiv);
+
+        // Add timestamp
+        const timestamp = document.createElement('div');
+        timestamp.className = 'timestamp';
+        timestamp.textContent = formatTimestamp(msgData.timestamp);
+        container.appendChild(timestamp);
+
+        // Add reactions container
+        const reactionsDiv = document.createElement('div');
+        reactionsDiv.className = 'reactions';
+        updateReactions(reactionsDiv, msgData.reactions || {}, msgData.id);
+        container.appendChild(reactionsDiv);
+
+        return container;
+    }
+
+    function updateReactions(reactionsDiv, reactions, messageId) {
+        reactionsDiv.innerHTML = '';
+        const users = reactions[REACTION_EMOJI] || [];
+        if (users.length > 0) {
+            const reaction = document.createElement('span');
+            reaction.className = 'reaction';
+            reaction.textContent = `${REACTION_EMOJI} ${users.length}`;
+            reaction.onclick = () => toggleReaction(messageId, REACTION_EMOJI);
+            reactionsDiv.appendChild(reaction);
+        }
+    }
+
+    function toggleReaction(messageId, emoji) {
+        const message = document.querySelector(`[data-message-id="${messageId}"]`);
+        // Prevent reacting to own messages
+        if (message.classList.contains('sent-message')) {
+            return;
+        }
+        
+        const reactions = message.querySelector('.reactions');
+        const existingReaction = reactions.querySelector('.reaction');
+        
+        if (existingReaction && reactions.querySelector(`[data-emoji="${emoji}"]`)) {
+            socket.emit('remove reaction', { messageId, emoji });
+        } else {
+            socket.emit('add reaction', { messageId, emoji });
+        }
+    }
+
+    function editMessage(messageId, textSpan) {
+        const currentText = textSpan.textContent.replace('(edited)', '').trim();
+        const newText = prompt('Edit message:', currentText);
+        
+        if (newText && newText !== currentText) {
+            socket.emit('edit message', {
+                messageId: messageId,
+                newText: newText
+            });
+        }
+    }
+
+    function deleteMessage(messageId) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            socket.emit('delete message', messageId);
+        }
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (input.value.trim()) {
+            socket.emit('chat message', input.value);
+            resetTextarea();
+        }
+    });
+
+    // Add Enter key handler (Send on Enter, new line on Shift+Enter)
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (input.value.trim()) {
+                socket.emit('chat message', input.value);
+                resetTextarea();
+            }
+        }
+    });
+
+    socket.on('load messages', function(existingMessages) {
+        existingMessages.forEach(msgData => {
+            messages.appendChild(createMessageElement(msgData));
+        });
+        messages.scrollTop = messages.scrollHeight;
+    });
+
+    socket.on('chat message', function(msgData) {
+        messages.appendChild(createMessageElement(msgData));
+        messages.scrollTop = messages.scrollHeight;
+    });
+
+    socket.on('message edited', function(msgData) {
+        const messageContainer = document.querySelector(`[data-message-id="${msgData.id}"]`);
+        if (messageContainer) {
+            const textSpan = messageContainer.querySelector('.message-text');
+            textSpan.textContent = msgData.text;
+            if (msgData.edited) {
+                const editedLabel = document.createElement('span');
+                editedLabel.className = 'edited-label';
+                editedLabel.textContent = '(edited)';
+                textSpan.appendChild(editedLabel);
+            }
+        }
+    });
+
+    socket.on('message deleted', function(messageId) {
+        const messageContainer = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageContainer) {
+            messageContainer.remove();
+        }
+    });
+
+    socket.on('reaction updated', function(data) {
+        const messageContainer = document.querySelector(`[data-message-id="${data.messageId}"]`);
+        if (messageContainer) {
+            const reactionsDiv = messageContainer.querySelector('.reactions');
+            updateReactions(reactionsDiv, data.reactions, data.messageId);
+        }
+    });
+
+    // Close emoji pickers when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.emoji-picker') && !e.target.closest('.action-button')) {
+            document.querySelectorAll('.emoji-picker').forEach(picker => picker.remove());
+        }
+    });
+    </script>
+  </body>
+</html>
