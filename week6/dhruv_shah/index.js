@@ -4,6 +4,19 @@ const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
+const mongoose = require("mongoose");
+
+const Schema = mongoose.Schema;
+
+const messageSchema = new Schema({
+  content: { type: String }
+})
+
+const messageModel = mongoose.model("Message", messageSchema)
+
+console.log()
+
+
 
 // Store messages in memory (in a real app, you'd use a database)
 const messages = new Map();
@@ -100,6 +113,26 @@ io.on('connection', (socket) => {
     });
 });
 
+app.get('/messages', async function(req, res){
+    res.json(await messageModel.find());
+});
+  
 server.listen(3000, () => {
     console.log('listening on *:3000');
 });
+
+io.on('connection', function(socket){
+    socket.on('chat message', function(msg){
+      const message = new messageModel();
+      message.content = msg;
+      message.save().then(m => {
+        io.emit('chat message', msg);
+      })
+    });
+  });
+  
+  server.listen(3000, async function(){
+    await mongoose.connect("mongodb+srv://dhruvdb:luffy1zoro2nami3@cubstart-decal.ofxaygg.mongodb.net/?appName=cubstart-decal")
+    console.log('listening on *:3000');
+  });
+  
