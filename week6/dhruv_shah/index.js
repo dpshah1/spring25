@@ -8,131 +8,53 @@ const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
 
+// Define the message schema
 const messageSchema = new Schema({
-  content: { type: String }
-})
+  content: String,
+  timestamp: { type: Date, default: Date.now }
+});
 
-const messageModel = mongoose.model("Message", messageSchema)
+const messageModel = mongoose.model("Message", messageSchema);
 
-console.log()
-
-
-
-// Store messages in memory (in a real app, you'd use a database)
-const messages = new Map();
-
+// Serve the main page
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
+// Fetch stored messages
+app.get('/messages', async (req, res) => {
+  res.json(await messageModel.find());
+});
+
+// WebSocket connection
 io.on('connection', (socket) => {
-    console.log('a user connected');
-    
-    // Send existing messages to newly connected users
-    const existingMessages = Array.from(messages.values());
-    socket.emit('load messages', existingMessages);
+  console.log('A user connected');
 
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    });
+  // Load existing messages from MongoDB
+  messageModel.find().then(messages => {
+    socket.emit('load messages', messages);
+  });
 
-    socket.on('chat message', (msg) => {
-        const messageData = {
-            id: Date.now().toString(), // unique ID for the message
-            text: msg,
-            senderId: socket.id,
-            timestamp: new Date().toISOString(),
-            reactions: {},
-            edited: false
-        };
-        
-        messages.set(messageData.id, messageData);
-        io.emit('chat message', messageData);
-    });
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
 
-    socket.on('edit message', (data) => {
-        const message = messages.get(data.messageId);
-        if (message && message.senderId === socket.id) {
-            message.text = data.newText;
-            message.edited = true;
-            messages.set(data.messageId, message);
-            io.emit('message edited', message);
-        }
-    });
+  socket.on('chat message', async (msg) => {
+    const messageToSave = new messageModel({
+        content: msg,
+        timestamp: new Date()
+    })
 
-    socket.on('delete message', (messageId) => {
-        const message = messages.get(messageId);
-        if (message && message.senderId === socket.id) {
-            messages.delete(messageId);
-            io.emit('message deleted', messageId);
-        }
-    });
-
-    socket.on('add reaction', (data) => {
-        const message = messages.get(data.messageId);
-        if (message && message.senderId !== socket.id) {
-            if (!message.reactions[data.emoji]) {
-                message.reactions[data.emoji] = new Set();
-            }
-            message.reactions[data.emoji].add(socket.id);
-            messages.set(data.messageId, message);
-            
-            // Convert Set to Array for transmission
-            const reactionsToSend = {};
-            for (const [emoji, users] of Object.entries(message.reactions)) {
-                reactionsToSend[emoji] = Array.from(users);
-            }
-            
-            io.emit('reaction updated', {
-                messageId: data.messageId,
-                reactions: reactionsToSend
-            });
-        }
-    });
-
-    socket.on('remove reaction', (data) => {
-        const message = messages.get(data.messageId);
-        if (message && message.senderId !== socket.id && message.reactions[data.emoji]) {
-            message.reactions[data.emoji].delete(socket.id);
-            if (message.reactions[data.emoji].size === 0) {
-                delete message.reactions[data.emoji];
-            }
-            messages.set(data.messageId, message);
-            
-            // Convert Set to Array for transmission
-            const reactionsToSend = {};
-            for (const [emoji, users] of Object.entries(message.reactions)) {
-                reactionsToSend[emoji] = Array.from(users);
-            }
-            
-            io.emit('reaction updated', {
-                messageId: data.messageId,
-                reactions: reactionsToSend
-            });
-        }
-    });
-});
-
-app.get('/messages', async function(req, res){
-    res.json(await messageModel.find());
-});
-  
-server.listen(3000, () => {
-    console.log('listening on *:3000');
-});
-
-io.on('connection', function(socket){
-    socket.on('chat message', function(msg){
-      const message = new messageModel();
-      message.content = msg;
-      message.save().then(m => {
+    await messageToSave.save().then(_ => {
         io.emit('chat message', msg);
-      })
-    });
+    });;
+    
   });
-  
-  server.listen(3000, async function(){
-    await mongoose.connect("mongodb+srv://dhruvdb:luffy1zoro2nami3@cubstart-decal.ofxaygg.mongodb.net/?appName=cubstart-decal")
-    console.log('listening on *:3000');
-  });
-  
+});  // <-- Closing brace for io.on('connection')
+
+
+// Start server with MongoDB connection
+server.listen(3000, async () => {
+  await mongoose.connect("mongodb+srv://dhruvdb:luffy1zoro2nami3@cubstart-decal.ofxaygg.mongodb.net/?retryWrites=true&w=majority&appName=cubstart-decal");
+  console.log('Listening on *:3000');
+});
